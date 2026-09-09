@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the Chrome updater daily
+
+[Timer]
+OnCalendar=daily
+# The point of the whole exercise: on a laptop that suspends rather than
+# reboots, a missed run fires on the next resume instead of being skipped.
+Persistent=true
+# The three updaters would otherwise all wake and hit the network together.
+RandomizedDelaySec=30m
+
+[Install]
+WantedBy=timers.target

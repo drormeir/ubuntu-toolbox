@@ -17,6 +17,9 @@ reads that way in places; when in doubt, write for a stranger's machine.
 - `systemd/*.service.in` are **templates**, not units. `install.sh` substitutes
   `@BIN@` and writes the result to `/etc/systemd/system/`. Editing a template
   has no effect until install.sh runs again and `systemctl daemon-reload` fires.
+- The `.timer` units are what gets enabled; the services have no `[Install]`
+  section on purpose. Enabling a `.service` directly would make it run at boot
+  *as well as* on its timer.
 - The updaters assume root, because they install packages.
 
 ## Never hardcode a user or a path

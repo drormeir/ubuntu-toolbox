@@ -11,5 +11,5 @@ Type=oneshot
 EnvironmentFile=-/etc/default/ubuntu-toolbox
 ExecStart=@BIN@/update-zoom.sh
 
-[Install]
-WantedBy=multi-user.target
+# No [Install] section on purpose: update-zoom.timer starts this, so the
+# service must not also be enabled against multi-user.target.

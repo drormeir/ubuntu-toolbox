@@ -21,14 +21,14 @@ the repo, makes `bin/*.sh` executable, and appends the `~/.bashrc.local` source
 line to `~/.bashrc` if it isn't there. Anything it would overwrite is renamed to
 `*.backup.<timestamp>` first.
 
-To also have the updaters run at boot:
+To also have the updaters run daily on their own:
 
 ```bash
 ./install.sh --systemd
 ```
 
-That part calls `sudo`. See [systemd units](#systemd-units) below for what it
-writes and why.
+That part calls `sudo`. See [systemd units and
+timers](#systemd-units-and-timers) below for what it writes and why.
 
 The repo is the real location and `~/bin` is a symlink to `bin/` — so editing a
 script here changes what runs, with no install step in between.
@@ -37,7 +37,7 @@ script here changes what runs, with no install step in between.
 
 | Script | What it does |
 |---|---|
-| `update-zoom.sh` | Downloads the latest Zoom `.deb` (once per day), installs it if newer than what's installed. Uses `If-Modified-Since` so an unchanged `.deb` transfers nothing. |
+| `update-zoom.sh` | Downloads the latest Zoom `.deb` (at most once per day), installs it if newer than what's installed. Uses `If-Modified-Since` so an unchanged `.deb` transfers nothing. |
 | `update-chrome.sh` | Refreshes only the Chrome apt source, upgrades `google-chrome-stable` if a newer candidate exists. |
 | `chrome-sources-fix.sh` | Re-adds `Architectures: amd64` to Chrome's `.sources` file after Chrome's postinst drops it. Called by `update-chrome.sh` and an apt hook. |
 | `update-cursor.sh` | Same idea for Cursor. Cursor's own Linux updater is broken (unsigned AppImage fails validation and rolls back), so this asks Cursor's download API for the latest stable `.deb`, compares versions *before* downloading (~300 MB), and installs when newer. |
@@ -79,31 +79,44 @@ Its last block sources `~/.bashrc.private` if that file exists, which is where
 machine-specific aliases can go without ending up in this repo. Nothing here
 depends on it.
 
-## systemd units
+## systemd units and timers
 
-`update-zoom.service`, `update-chrome.service` and `update-cursor.service` each
-run the matching script **once at boot** — they are not daily timers; the "once
-per day" guard lives in the scripts themselves.
+Each updater has a `.service` that runs it once and a `.timer` that starts the
+service daily. Only the timers are enabled; the services are started by them.
 
-They are kept as templates in `systemd/*.service.in`, because two things in them
-are per-machine. `./install.sh --systemd` fills both in:
+The timers set `Persistent=true`, which is the part that matters on a laptop.
+A machine that suspends instead of rebooting is asleep at the scheduled hour,
+and a plain timer would simply skip that day. `Persistent=true` records the last
+run and fires a missed one on the next resume. `RandomizedDelaySec=30m` keeps
+the three from waking and hitting the network together.
+
+The scripts still keep their own once-per-day marker, so a catch-up run plus a
+scheduled run on the same day does no duplicate work.
+
+```bash
+systemctl list-timers 'update-*'
+```
+
+The services are kept as templates in `systemd/*.service.in`, because two
+things in them are per-machine. `./install.sh --systemd` fills both in:
 
 - `@BIN@` becomes your checkout's `bin/` directory, since `ExecStart` needs an
   absolute path.
 - `/etc/default/ubuntu-toolbox` gets `TOOLBOX_USER=<you>`. A root unit has no
   invoking user, so this is the only way it can know whose `~/Downloads` to use.
 
-They used to declare only `After=network-online.target`, which orders the unit
-against that target but does not pull it into the boot. The script could
-therefore start before the network was up, fail its connectivity probe and exit
-0 silently — the reason they seemed not to work. All three units now also
-declare `Wants=network-online.target`, and use `Type=oneshot` (they run to
-completion and exit rather than staying resident).
+The timers need no substitution and are installed as they are.
 
-This still requires `NetworkManager-wait-online.service` to be enabled —
-`install.sh` warns if it isn't — and still only runs at boot. A `systemd` timer
-with `OnCalendar=daily` and `Persistent=true` would be the way to make it
-genuinely daily on a laptop that suspends rather than reboots.
+The services declare both `Wants=` and `After=network-online.target`. They once
+declared only `After=`, which orders a unit against that target but does not
+pull it into the boot — so a script could start before the network was up, fail
+its connectivity probe and exit 0 silently. That was the reason they seemed not
+to work. This still requires `NetworkManager-wait-online.service` to be enabled
+for the catch-up run right after boot; `install.sh` warns if it isn't.
+
+If you installed an earlier version of this repo, `./install.sh --systemd`
+migrates you: it disables the services from `multi-user.target`, where they ran
+at boot, before enabling the timers.
 
 ## Layout
 
@@ -113,7 +126,7 @@ ubuntu-toolbox/
 ├── bin/                          # the scripts; ~/bin points here
 ├── shell/
 │   └── bashrc.local              # symlinked to ~/.bashrc.local
-├── systemd/                      # unit templates; @BIN@ filled in at install
+├── systemd/                      # .service.in templates (@BIN@) + .timer units
 ├── docs/
 │   └── wifi-doctor/              # docs for bin/wifi-doctor.sh
 ├── CLAUDE.md                     # notes for Claude Code

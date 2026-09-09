@@ -62,7 +62,18 @@ fi
 
 if [ "$WITH_SYSTEMD" -eq 1 ]; then
     echo
-    echo "Installing systemd units (they run as root at boot):"
+    echo "Installing systemd units (they run as root, daily):"
+
+    # Earlier versions enabled the .service units directly against
+    # multi-user.target, so they ran at boot. The timers drive them now.
+    # Disable the old wiring first, while those unit files still have the
+    # [Install] section that `systemctl disable` needs to undo.
+    for svc in update-zoom update-chrome update-cursor; do
+        if systemctl is-enabled --quiet "$svc.service" 2>/dev/null; then
+            sudo systemctl disable "$svc.service" >/dev/null 2>&1 || true
+            echo "  migrate $svc.service no longer runs at boot; its timer will"
+        fi
+    done
 
     # The units need to know whose ~/Downloads and ~/.cache to write to. As
     # root there is nobody to infer it from, so it is recorded here.
@@ -73,23 +84,38 @@ TOOLBOX_USER=$USER
 EOF
     echo "  write   /etc/default/ubuntu-toolbox (TOOLBOX_USER=$USER)"
 
+    # @BIN@ is the only substitution; the timers need none.
     for unit in "$REPO"/systemd/*.service.in; do
         name=$(basename -- "$unit" .in)
         sed "s|@BIN@|$REPO/bin|g" "$unit" | sudo tee "/etc/systemd/system/$name" >/dev/null
+        sudo chmod 644 "/etc/systemd/system/$name"
+        echo "  write   /etc/systemd/system/$name"
+    done
+
+    for unit in "$REPO"/systemd/*.timer; do
+        name=$(basename -- "$unit")
+        sudo install -m 644 "$unit" "/etc/systemd/system/$name"
         echo "  write   /etc/systemd/system/$name"
     done
 
     sudo systemctl daemon-reload
-    sudo systemctl enable update-zoom.service update-chrome.service update-cursor.service
+    sudo systemctl enable --now update-zoom.timer update-chrome.timer update-cursor.timer
 
-    # The units order themselves after network-online.target, but that target
-    # is only reached if something reaches it.
+    # The services order themselves after network-online.target, which matters
+    # for the catch-up run right after boot. That target is only reached if
+    # something pulls it in.
     if ! systemctl is-enabled --quiet NetworkManager-wait-online.service 2>/dev/null; then
         echo
-        echo "  NOTE: NetworkManager-wait-online.service is not enabled. Without it"
-        echo "        the updaters may run before the network is up and skip. Enable"
-        echo "        it with: sudo systemctl enable NetworkManager-wait-online.service"
+        echo "  NOTE: NetworkManager-wait-online.service is not enabled. Without it a"
+        echo "        catch-up run at boot may start before the network is up and skip."
+        echo "        Enable it with:"
+        echo "          sudo systemctl enable NetworkManager-wait-online.service"
     fi
+
+    echo
+    echo "  Timers are daily with Persistent=true, so a run missed while the"
+    echo "  machine was off or suspended fires on the next resume. Check with:"
+    echo "    systemctl list-timers 'update-*'"
 fi
 
 echo

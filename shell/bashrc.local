@@ -1,0 +1,38 @@
+export CUDA_HOME=/usr/local/cuda
+export PATH="$CUDA_HOME/bin:$HOME/bin:$PATH"
+
+alias rm_pycache="find . -type d -name '__pycache__' -exec rm -rf {} +"
+
+alias thesis3.13="source ~/venv/thesis3.13/bin/activate && cd ~/projects/RUNI/Thesis"
+
+alias astro3.12='source ~/venv/astro3.12/bin/activate && cd ~/projects/exoplanetos'
+
+alias geo_sense='cd ~/projects/geo_sense && source venv_geo_sense/bin/activate'
+
+alias update_pip='python -m pip install --upgrade pip'
+
+alias update_claude='echo "Current version: $(claude --version) Updating... $(claude update)  Current version: $(claude --version)"'
+
+alias update_all='sudo apt update && sudo apt -y upgrade --allow-downgrades && chrome-sources-fix.sh && sudo update-grub && sudo snap refresh && sudo apt autoremove -y && update_claude && update-zoom.sh && fwupdmgr update && nvidia-version-check.sh -q'
+
+alias gedit='XDG_CURRENT_DESKTOP=GNOME /usr/bin/gedit'
+
+alias ll='ls -lart'
+
+alias ubuntu_ver='cat /etc/os-release'
+
+export GTK_MODULES="appmenu-gtk-module"
+
+# Project shortcuts: $GEOSENSE/... auto-completes to the literal path on tab-press.
+export GEOSENSE="$HOME/projects/geo_sense"
+# direxpand: when tab-completing a path that starts with $VAR, replace the
+# variable with its expanded value in the command line (applies to every
+# exported variable, set once for the whole shell).
+shopt -s direxpand
+
+text_search() {
+    ext="$1"
+    shift
+    grep -RIn --include="*.$ext" "$@" .
+}
+

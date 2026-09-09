@@ -1,0 +1,14 @@
+# downloaded packages
+*.deb
+*.rpm
+*.AppImage
+
+# editor / OS junk
+*~
+*.swp
+.DS_Store
+.idea/
+.vscode/
+
+# one-shot migration scripts
+tmp/

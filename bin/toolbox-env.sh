@@ -46,6 +46,27 @@ own() {
     chown "$TOOLBOX_USER:$TOOLBOX_GROUP" "$@" 2>/dev/null || true
 }
 
+# Report a real failure and exit non-zero.
+#
+# Use this, not `log ...; exit 0`, whenever something went wrong. These scripts
+# run from systemd, and an updater that exits 0 after failing leaves the unit
+# marked successful — so `systemctl --failed` stays empty and the breakage is
+# invisible until someone notices the software is months out of date.
+#
+# Reserve `exit 0` for the cases that genuinely are not failures: no network
+# yet, already ran today, already up to date.
+#
+# Calls the caller's log() when it has defined one, so the message reaches
+# ~/.cache/updates.log with the right prefix; resolved at call time.
+die() {
+    if declare -F log >/dev/null; then
+        log "$@"
+    else
+        echo "toolbox: $*" >&2
+    fi
+    exit 1
+}
+
 # Both are assumed to exist by the download and marker paths below. Downloads
 # in particular is absent on a fresh server install.
 mkdir -p "$TOOLBOX_DOWNLOADS" "$TOOLBOX_CACHE"

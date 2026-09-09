@@ -32,7 +32,11 @@ if [ -f "$MARKER_FILE" ] && [ "$(date -r "$MARKER_FILE" +%F)" = "$(date +%F)" ];
     exit 0
 fi
 
-# Check for network connectivity
+# Check for network connectivity.
+#
+# Exit 0, not die: booting or resuming without a network yet is expected, not a
+# failure, and the timer will come round again. Everything below this point is
+# a real error and exits non-zero.
 if ! wget -q --spider --timeout=5 https://google.com >/dev/null 2>&1; then
     log "no network — skipped"
     exit 0
@@ -45,15 +49,11 @@ REF="$STAMP"
 [ -f "$REF" ] || REF="$DEST"
 
 if [ -f "$REF" ]; then
-    http_code=$(curl -sS -L -R -z "$REF" -o "$DEST" -w '%{http_code}' "$LATEST_URL") || {
-        log "download failed"
-        exit 0
-    }
+    http_code=$(curl -sS -L -R -z "$REF" -o "$DEST" -w '%{http_code}' "$LATEST_URL") \
+        || die "download failed from $LATEST_URL"
 else
-    http_code=$(curl -sS -L -R -o "$DEST" -w '%{http_code}' "$LATEST_URL") || {
-        log "download failed"
-        exit 0
-    }
+    http_code=$(curl -sS -L -R -o "$DEST" -w '%{http_code}' "$LATEST_URL") \
+        || die "download failed from $LATEST_URL"
 fi
 
 if [ "$http_code" = "304" ]; then
@@ -63,8 +63,7 @@ if [ "$http_code" = "304" ]; then
 fi
 
 if [ ! -s "$DEST" ]; then
-    log "no .deb on disk after download (HTTP $http_code)"
-    exit 0
+    die "no .deb on disk after download (HTTP $http_code)"
 fi
 
 own "$DEST"

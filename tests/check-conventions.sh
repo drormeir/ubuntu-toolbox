@@ -72,6 +72,19 @@ for m in zoom_updater_last_run chrome_updater_last_run cursor_updater_last_run; 
     grep -rq "$m" "$BIN" || note "$m is no longer referenced"
 done
 
+echo "the updaters report failures instead of exiting 0"
+grep -q "^die()" "$BIN/toolbox-env.sh" || note "toolbox-env.sh no longer defines die()"
+for f in update-zoom.sh update-chrome.sh update-cursor.sh; do
+    grep -q "die " "$BIN/$f" || note "$f never calls die — check its error paths"
+    # The pattern that hid the broken Cursor API: an error-worded log line
+    # followed by exit 0. "no network" and "already ran today" are sanctioned
+    # skips and are worded so they do not match.
+    if grep -A2 -E 'log "[^"]*(failed|unreachable|could not|error|no \.deb)' "$BIN/$f" \
+        | grep -q "exit 0"; then
+        note "$f logs an error then exits 0 — use die"
+    fi
+done
+
 echo "nothing hardcodes a user or a home directory"
 if grep -rn "/home/[a-z]" "$BIN" "$ROOT/install.sh" "$ROOT/systemd" >/dev/null 2>&1; then
     grep -rn "/home/[a-z]" "$BIN" "$ROOT/install.sh" "$ROOT/systemd"

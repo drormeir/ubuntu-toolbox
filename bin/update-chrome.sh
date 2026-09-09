@@ -27,7 +27,11 @@ if [ -f "$MARKER_FILE" ]; then
     fi
 fi
 
-# Check for network connectivity
+# Check for network connectivity.
+#
+# Exit 0, not die: booting or resuming without a network yet is expected, not a
+# failure, and the timer will come round again. Everything below this point is
+# a real error and exits non-zero.
 if ! wget -q --spider --timeout=5 https://google.com >/dev/null 2>&1; then
     log "no network — skipped"
     exit 0
@@ -38,15 +42,15 @@ echo "Chrome Updater: Refreshing Chrome apt source..."
 apt-get update \
     -o Dir::Etc::sourcelist="sources.list.d/google-chrome.list" \
     -o Dir::Etc::sourceparts="-" \
-    -o APT::Get::List-Cleanup="0"
+    -o APT::Get::List-Cleanup="0" \
+    || die "apt-get update failed for the Chrome source"
 
 # Compare installed vs candidate version
 INSTALLED_VER=$(dpkg-query -W -f='${Version}' google-chrome-stable 2>/dev/null || echo "")
 CANDIDATE_VER=$(apt-cache policy google-chrome-stable | awk '/Candidate:/ {print $2}')
 
 if [ -z "$CANDIDATE_VER" ] || [ "$CANDIDATE_VER" = "(none)" ]; then
-    log "could not determine candidate version — skipped"
-    exit 0
+    die "could not determine a candidate version for google-chrome-stable"
 fi
 
 if [ -n "$INSTALLED_VER" ] && dpkg --compare-versions "$INSTALLED_VER" ge "$CANDIDATE_VER"; then

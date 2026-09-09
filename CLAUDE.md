@@ -85,6 +85,24 @@ Compare versions *before* downloading. `update-cursor.sh` pulls a ~300 MB
 `.deb`; the version check exists to avoid that download, not to avoid the
 install.
 
+**A failure must exit non-zero. Use `die`, never `log ...; exit 0`.** These run
+from systemd. An updater that exits 0 after failing leaves its unit marked
+successful, so `systemctl --failed` stays empty and nobody finds out until the
+software is months stale. That is exactly what happened to `update-cursor.sh`:
+Cursor's API had been answering HTTP 500, and the script logged "download API
+unreachable — skipped" and exited 0 every time.
+
+`exit 0` is only for the three cases that are genuinely not failures:
+
+- no network yet (booting or resuming — the timer comes round again)
+- already ran today (the once-per-day marker)
+- already at the latest version
+
+Everything else is `die`, which logs through the caller's `log()` and exits 1.
+When the failure came from a server, put the status code and the response body
+in the message — "returned nothing" leaves the reader guessing whose fault it
+was.
+
 ## There is a private repo beside this one
 
 Anything that names the author's machine, or the work done on it, belongs in the

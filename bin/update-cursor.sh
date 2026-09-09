@@ -34,27 +34,41 @@ if [ -f "$MARKER_FILE" ]; then
     fi
 fi
 
-# Check for network connectivity
+# Check for network connectivity.
+#
+# Exit 0, not die: booting or resuming without a network yet is expected, not a
+# failure, and the timer will come round again. Everything below this point is
+# a real error and exits non-zero.
 if ! wget -q --spider --timeout=5 https://google.com >/dev/null 2>&1; then
     log "no network — skipped"
     exit 0
 fi
 
-# Ask Cursor's download API for the latest stable .deb
+# Ask Cursor's download API for the latest stable .deb.
+#
+# curl rather than wget so the HTTP status is available: this API answers a
+# server-side problem with a 500, and a log line saying "returned nothing"
+# would leave you guessing whose fault it is.
 echo "Cursor Updater: Querying $API_URL ..."
-JSON=$(wget -qO- --timeout=20 "$API_URL" || echo "")
+BODY=$(mktemp)
+trap 'rm -f "$BODY"' EXIT
 
-if [ -z "$JSON" ]; then
-    log "download API unreachable — skipped"
-    exit 0
+http_code=$(curl -sS --max-time 20 -o "$BODY" -w '%{http_code}' "$API_URL") \
+    || die "could not reach the download API — $API_URL"
+
+JSON=$(cat "$BODY")
+
+if [ "$http_code" != "200" ]; then
+    printf 'Cursor Updater: response body: %s\n' "$(head -c 500 "$BODY")" >&2
+    die "download API returned HTTP $http_code — this is Cursor's end, not yours"
 fi
 
 LATEST_URL=$(printf '%s' "$JSON" | grep -oP '"(downloadUrl|url)"\s*:\s*"\K[^"]+' | head -n1 || true)
 
 if [ -z "$LATEST_URL" ]; then
-    echo "Cursor Updater: Could not parse a download URL out of the API response:"
-    printf '%s\n' "$JSON" | head -c 500
-    exit 0
+    # A 200 with no URL in it. The body is the only clue, so record it.
+    printf 'Cursor Updater: response body: %s\n' "$(head -c 500 "$BODY")" >&2
+    die "no download URL in the API response"
 fi
 
 # Version, preferably from the JSON, otherwise from the URL
@@ -77,7 +91,8 @@ if [ -n "$INSTALLED_VER" ] && [ -n "$REMOTE_VER" ]; then
 fi
 
 echo "Cursor Updater: Downloading Cursor ${REMOTE_VER:-latest} to $DEST ..."
-wget --no-use-server-timestamps -O "$DEST" "$LATEST_URL"
+wget --no-use-server-timestamps -O "$DEST" "$LATEST_URL" \
+    || die "download failed from $LATEST_URL"
 own "$DEST"
 echo "Cursor Updater: Downloaded to $DEST"
 

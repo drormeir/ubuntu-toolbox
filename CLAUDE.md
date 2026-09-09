@@ -1,27 +1,51 @@
 # ubuntu-toolbox
 
-Maintenance scripts and system notes for one Ubuntu 24.04 (KDE Plasma) laptop.
-Shell only. No build, no test suite, no package manager.
+Maintenance scripts for an Ubuntu 24.04 (KDE Plasma) desktop. Shell only. No
+build, no test suite, no package manager.
+
+**This is a public repo meant for other people to use.** That is the constraint
+behind most of what follows. It was originally one person's dotfiles and still
+reads that way in places; when in doubt, write for a stranger's machine.
 
 ## Things you cannot see from the code
 
 - `~/bin` is a **symlink to `bin/` in this repo**. Editing `bin/foo.sh` here
   changes what runs as `foo.sh` on `$PATH`. There is no install or copy step.
 - `~/.bashrc.local` is a symlink to `shell/bashrc.local`, same deal.
-- Paths are hardcoded to `/home/dror` throughout, in the scripts and in the
-  `.service` units. Do not replace them with `$HOME`: the updaters run as root
-  from systemd, where `$HOME` is `/root`.
-- The `.service` units live in `bin/` but are **not** run from there. They are
-  copied to `/etc/systemd/system/`. Editing a unit here has no effect until it
-  is copied over and `systemctl daemon-reload` runs.
-- The updaters assume root. They `chown dror:dror` what they download so the
-  files are usable from a normal login.
+- Nothing may hardcode a username or a checkout path. `bin/toolbox-env.sh`
+  resolves both; see below.
+- `systemd/*.service.in` are **templates**, not units. `install.sh` substitutes
+  `@BIN@` and writes the result to `/etc/systemd/system/`. Editing a template
+  has no effect until install.sh runs again and `systemctl daemon-reload` fires.
+- The updaters assume root, because they install packages.
+
+## Never hardcode a user or a path
+
+The updaters run as root but write into a desktop user's `~/Downloads` and
+`~/.cache`. `bin/toolbox-env.sh` is sourced at the top of each one and exports
+`TOOLBOX_USER`, `TOOLBOX_HOME`, `TOOLBOX_DOWNLOADS`, `TOOLBOX_CACHE`,
+`TOOLBOX_LOG` and `TOOLBOX_BIN`, plus an `own()` helper that hands a file to
+that user and no-ops when unprivileged.
+
+Use those. In particular:
+
+- `own "$FILE"`, never `chown someuser:someuser "$FILE"`.
+- `"$TOOLBOX_BIN/install-deb.sh"`, never an absolute path to another script.
+- Do not substitute `$HOME` for `$TOOLBOX_HOME`. Under systemd the scripts run
+  as root, where `$HOME` is `/root` — that is the bug this exists to prevent.
+
+`toolbox-env.sh` resolves the user from `$TOOLBOX_USER`, then `$SUDO_USER`, then
+the current user if unprivileged. Root with none of them set is a hard error on
+purpose: guessing would write into `/root`.
 
 ## Conventions
 
 - Every script is `#!/bin/bash` with `set -e`.
 - Scripts are mode 755. A new script in `bin/` needs `chmod +x`, or it silently
-  fails as "permission denied" on `$PATH`.
+  fails as "permission denied" on `$PATH`. `install.sh` chmods them too.
+- A new updater sources `toolbox-env.sh` on the line after `set -e`, gets a
+  `systemd/<name>.service.in` template if it should run at boot, and a row in
+  the README's script table.
 - The once-per-day updaters guard themselves with a marker file under
   `~/.cache/`. Their names (`chrome_updater_last_run`, `cursor_updater_last_run`,
   `zoom_updater_last_run`) are load-bearing — renaming one resets the state and
@@ -34,9 +58,9 @@ Compare versions *before* downloading. `update-cursor.sh` pulls a ~300 MB
 `.deb`; the version check exists to avoid that download, not to avoid the
 install.
 
-## This repo is public. There is a private one beside it.
+## There is a private repo beside this one
 
-Anything that names this machine, or the work done on it, belongs in the
+Anything that names the author's machine, or the work done on it, belongs in the
 private repo at `~/.private` (`~/projects/ubuntu-toolbox-private`), not here.
 That means project or client aliases, `~/venv/...` and `~/projects/...` paths,
 and notes on hardware, partitions or security posture.
@@ -52,13 +76,9 @@ fi
 Keep it an `if`. As `[ -f ... ] && . ...` the file returns 1 when the private
 half is absent, which aborts any script that sources it under `set -e`.
 
-Never remove the guard, and never add anything else here that
-names the private repo. This repo must work on a machine that has no private
-half. `~/.private/bin` goes on `$PATH` from `bashrc.private`, not from
-`bashrc.local`.
-
-The hardcoded `/home/dror` paths are a portability problem, not a privacy one.
-Do not move a script to the private repo on account of them.
+Never remove the guard, and never add anything else here that names the private
+repo. Most people cloning this have no private half at all. `~/.private/bin`
+goes on `$PATH` from `bashrc.private`, not from `bashrc.local`.
 
 ## Docs
 

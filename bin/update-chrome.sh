@@ -4,15 +4,17 @@
 
 set -e
 
+. "$(dirname -- "$(readlink -f -- "$0")")/toolbox-env.sh"
+
 SOURCES_FILE="/etc/apt/sources.list.d/google-chrome.sources"
-MARKER_FILE="/home/dror/.cache/chrome_updater_last_run"
-LOG="/home/dror/.cache/updates.log"
+MARKER_FILE="$TOOLBOX_CACHE/chrome_updater_last_run"
+LOG="$TOOLBOX_LOG"
 
 log() {
     echo "Chrome Updater: $*"
     mkdir -p "$(dirname "$LOG")"
     printf '%s  chrome  %s\n' "$(date '+%F %T')" "$*" >> "$LOG"
-    chown dror:dror "$LOG" 2>/dev/null || true
+    own "$LOG"
 }
 
 # Only run once per day
@@ -60,11 +62,11 @@ else
 fi
 
 # Fix the .sources file if Chrome's postinst overwrote it (missing Architectures line)
-/home/dror/bin/chrome-sources-fix.sh
+"$TOOLBOX_BIN/chrome-sources-fix.sh"
 
 # Update marker
 mkdir -p "$(dirname "$MARKER_FILE")"
 touch "$MARKER_FILE"
-chown dror:dror "$MARKER_FILE"
+own "$MARKER_FILE"
 
 echo "Chrome Updater: Done."

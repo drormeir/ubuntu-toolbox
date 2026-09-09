@@ -5,23 +5,25 @@
 
 set -e
 
+. "$(dirname -- "$(readlink -f -- "$0")")/toolbox-env.sh"
+
 LATEST_URL="https://zoom.us/client/latest/zoom_amd64.deb"
-DEST="/home/dror/Downloads/zoom_amd64.deb"
-STAMP="/home/dror/.cache/zoom_deb.stamp"     # carries the server date of the last .deb we fetched
-MARKER_FILE="/home/dror/.cache/zoom_updater_last_run"
-LOG="/home/dror/.cache/updates.log"
+DEST="$TOOLBOX_DOWNLOADS/zoom_amd64.deb"
+STAMP="$TOOLBOX_CACHE/zoom_deb.stamp"     # carries the server date of the last .deb we fetched
+MARKER_FILE="$TOOLBOX_CACHE/zoom_updater_last_run"
+LOG="$TOOLBOX_LOG"
 
 log() {
     echo "Zoom Updater: $*"
     mkdir -p "$(dirname "$LOG")"
     printf '%s  zoom    %s\n' "$(date '+%F %T')" "$*" >> "$LOG"
-    chown dror:dror "$LOG" 2>/dev/null || true
+    own "$LOG"
 }
 
 touch_marker() {
     mkdir -p "$(dirname "$MARKER_FILE")"
     touch "$MARKER_FILE"
-    chown dror:dror "$MARKER_FILE"
+    own "$MARKER_FILE"
 }
 
 # Only run once per day
@@ -65,7 +67,7 @@ if [ ! -s "$DEST" ]; then
     exit 0
 fi
 
-chown dror:dror "$DEST"
+own "$DEST"
 
 DEB_VER=$(dpkg-deb -f "$DEST" Version)
 INSTALLED_VER=$(dpkg-query -W -f='${Version}' zoom 2>/dev/null || echo "")
@@ -73,18 +75,18 @@ INSTALLED_VER=$(dpkg-query -W -f='${Version}' zoom 2>/dev/null || echo "")
 if [ -n "$INSTALLED_VER" ] && dpkg --compare-versions "$INSTALLED_VER" ge "$DEB_VER"; then
     log "already at $INSTALLED_VER (downloaded $DEB_VER)"
     mkdir -p "$(dirname "$STAMP")"
-    touch -r "$DEST" "$STAMP"; chown dror:dror "$STAMP"
+    touch -r "$DEST" "$STAMP"; own "$STAMP"
     rm -f "$DEST"
     touch_marker
     exit 0
 fi
 
-if "/home/dror/bin/install-deb.sh" "$DEST"; then
+if "$TOOLBOX_BIN/install-deb.sh" "$DEST"; then
     log "installed $DEB_VER (was ${INSTALLED_VER:-not installed})"
     # Keep only the server date, not the 90MB file — the stamp is what the
     # next If-Modified-Since compares against.
     mkdir -p "$(dirname "$STAMP")"
-    touch -r "$DEST" "$STAMP"; chown dror:dror "$STAMP"
+    touch -r "$DEST" "$STAMP"; own "$STAMP"
     rm -f "$DEST"
 else
     log "INSTALL FAILED for $DEB_VER — .deb kept at $DEST"

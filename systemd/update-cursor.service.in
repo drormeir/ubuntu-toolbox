@@ -1,0 +1,15 @@
+[Unit]
+Description=Cursor Updater Script
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+# TOOLBOX_USER lives here: the unit runs as root, so there is no invoking user
+# whose ~/Downloads and ~/.cache the script could infer. `-` means the unit
+# still starts if the file is absent; the script then fails with a clear message.
+EnvironmentFile=-/etc/default/ubuntu-toolbox
+ExecStart=@BIN@/update-cursor.sh
+
+[Install]
+WantedBy=multi-user.target

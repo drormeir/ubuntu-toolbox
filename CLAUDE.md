@@ -43,7 +43,31 @@ purpose: guessing would write into `/root`.
 
 ## Conventions
 
-- Every script is `#!/bin/bash` with `set -e`.
+- Scripts are `#!/bin/bash`, except the two meant to be copied to another
+  machine and run there — `wifi-doctor.sh` and `nvidia-version-check.sh` — which
+  use `#!/usr/bin/env bash`. Keep that split.
+- **A script that changes system state uses `set -e`.** The updaters,
+  `install-deb.sh`, `chrome-sources-fix.sh`, `toggle-sddm-keyboard.sh`,
+  `select-apt-mirror.sh` and `install.sh` all do. Half-finishing a package
+  install or an apt-source edit is worse than stopping.
+- **The read-only scripts deliberately do not**: `desktop-info.sh`,
+  `os-info.sh`, `nvidia-version-check.sh`, `wifi-doctor.sh`. They probe a
+  system and report. A missing `glxinfo` or an absent NVIDIA module is a result
+  to print, not a reason to abort half way through. The two diagnostics use
+  `set -u` instead, which catches typos without turning a failed probe fatal.
+- **`nvidia-version-check.sh` additionally cannot take `set -e`**: its exit
+  code *is* its interface (0 match, 1 mismatch, 2 error), and `set -e` would
+  make a failed probe exit before it could report one.
+- **`toolbox-env.sh` cannot take it either**, because it is sourced — a shell
+  option set there would leak into the caller. It reports failures and exits
+  explicitly instead.
+- Do not "fix" any of those by adding `set -e`. Each says why in a comment.
+- **Run `tests/check-conventions.sh` after changing anything in `bin/`.** It
+  verifies the claims on this page against the tree — the `set -e` split, the
+  shebangs, the file modes, the marker filenames, and that no hardcoded home
+  directory has crept back. These rules drifted from reality once already.
+  If it fails, decide whether the script or the rule is wrong, then fix that
+  one and its entry in the checker together.
 - Scripts are mode 755. A new script in `bin/` needs `chmod +x`, or it silently
   fails as "permission denied" on `$PATH`. `install.sh` chmods them too.
 - A new updater sources `toolbox-env.sh` on the line after `set -e`, gets a

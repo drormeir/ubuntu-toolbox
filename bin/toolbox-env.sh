@@ -3,6 +3,10 @@
 #
 # The updaters run as root but write into a desktop user's ~/Downloads and
 # ~/.cache. This resolves which user that is, and hands new files back to them.
+#
+# No `set -e` on purpose. This file is sourced, so any shell option set here
+# would leak into the calling script and change its behaviour. The callers set
+# their own. Failures here are reported and exited explicitly instead.
 
 # Most explicit source first.
 if [ -n "${TOOLBOX_USER:-}" ]; then

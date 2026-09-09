@@ -127,6 +127,8 @@ ubuntu-toolbox/
 ├── shell/
 │   └── bashrc.local              # symlinked to ~/.bashrc.local
 ├── systemd/                      # .service.in templates (@BIN@) + .timer units
+├── tests/
+│   └── check-conventions.sh      # asserts the repo follows its own rules
 ├── docs/
 │   └── wifi-doctor/              # docs for bin/wifi-doctor.sh
 ├── CLAUDE.md                     # notes for Claude Code

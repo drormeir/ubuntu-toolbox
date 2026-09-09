@@ -2,6 +2,10 @@
 # nvidia-version-check: verify loaded NVIDIA kernel module matches on-disk version.
 # Usage: nvidia-version-check [-q|--quiet]
 # Exit codes: 0 = match, 1 = mismatch (reboot needed), 2 = error.
+#
+# `set -u` but deliberately no `set -e`: the exit code above is this script's
+# interface, and `set -e` would abort on a failed probe before it could report
+# one.
 
 set -u
 

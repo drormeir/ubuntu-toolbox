@@ -3,7 +3,9 @@
 # Interactive when run from a terminal; automatic when there is no TTY
 # (systemd units, cron) — where a prompt would silently receive EOF.
 
-filename="$1"
+set -e
+
+filename="${1:-}"
 
 if [ -z "$filename" ]; then
   echo "Usage: $0 package_file.deb"

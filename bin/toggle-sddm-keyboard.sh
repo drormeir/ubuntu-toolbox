@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 CONF_DIR="/etc/sddm.conf.d"
 CONF_FILE="$CONF_DIR/00-virtualkeyboard.conf"
 

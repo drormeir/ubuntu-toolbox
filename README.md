@@ -11,7 +11,6 @@ ubuntu-toolbox/
 ├── shell/
 │   └── bashrc.local              # symlinked to ~/.bashrc.local
 ├── docs/
-│   ├── DISK_ENCRYPTION_LUKS.md   # LUKS/cryptsetup guide + limits of this machine
 │   └── wifi-doctor/              # docs for bin/wifi-doctor.sh (see below)
 ├── CLAUDE.md                     # notes for Claude Code
 └── README.md
@@ -47,6 +46,28 @@ the `update_all` alias. That alias chains the system updates — apt, grub, snap
 firmware — with `chrome-sources-fix.sh`, `update-zoom.sh` and
 `nvidia-version-check.sh`. The chrome and cursor updaters are not in it; they
 run from their systemd units at boot.
+
+## The private half
+
+Anything naming this specific machine — or the work done on it — lives in a
+separate private repo, symlinked at `~/.private`. That is where the
+project aliases and the disk-encryption notes went.
+
+The two repos meet at one place, the last block in `shell/bashrc.local`:
+
+```bash
+if [ -f ~/.bashrc.private ]; then
+    . ~/.bashrc.private
+fi
+```
+
+An `if` rather than `[ -f ... ] && ...` so a missing private half does not make
+this file return 1 and abort any script that sources it under `set -e`.
+
+The guard is the contract. This repo has to keep working on a machine with no
+private half, so nothing here may name anything in there — no path, no alias,
+no script. `~/.private/bin` is added to `$PATH` from the private file, not
+from this one.
 
 ## Scripts
 

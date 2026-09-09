@@ -34,9 +34,34 @@ Compare versions *before* downloading. `update-cursor.sh` pulls a ~300 MB
 `.deb`; the version check exists to avoid that download, not to avoid the
 install.
 
+## This repo is public. There is a private one beside it.
+
+Anything that names this machine, or the work done on it, belongs in the
+private repo at `~/.private` (`~/projects/ubuntu-toolbox-private`), not here.
+That means project or client aliases, `~/venv/...` and `~/projects/...` paths,
+and notes on hardware, partitions or security posture.
+
+The two meet at one block, the last in `shell/bashrc.local`:
+
+```bash
+if [ -f ~/.bashrc.private ]; then
+    . ~/.bashrc.private
+fi
+```
+
+Keep it an `if`. As `[ -f ... ] && . ...` the file returns 1 when the private
+half is absent, which aborts any script that sources it under `set -e`.
+
+Never remove the guard, and never add anything else here that
+names the private repo. This repo must work on a machine that has no private
+half. `~/.private/bin` goes on `$PATH` from `bashrc.private`, not from
+`bashrc.local`.
+
+The hardcoded `/home/dror` paths are a portability problem, not a privacy one.
+Do not move a script to the private repo on account of them.
+
 ## Docs
 
-- `docs/DISK_ENCRYPTION_LUKS.md` — LUKS notes for this machine.
 - `docs/wifi-doctor/` — full docs for `bin/wifi-doctor.sh`, including its own
   `CLAUDE.md` from when it was a separate repo. That file governs
   `wifi-doctor.sh` only.

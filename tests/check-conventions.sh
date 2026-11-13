@@ -19,12 +19,13 @@ BIN="$ROOT/bin"
 
 # Scripts that change system state. These must stop on the first failure.
 STATE_CHANGING="install-deb.sh chrome-sources-fix.sh toggle-sddm-keyboard.sh
-                select-apt-mirror.sh update-chrome.sh update-cursor.sh update-zoom.sh"
+                select-apt-mirror.sh update-chrome.sh update-cursor.sh update-zoom.sh
+                set-turbo.sh"
 
 # Scripts that deliberately do not use `set -e`, and why:
 #   read-only probes  — a failed probe is a result to print, not a reason to abort
 #   toolbox-env.sh    — sourced; a shell option here would leak into the caller
-NO_SET_E="desktop-info.sh os-info.sh nvidia-version-check.sh wifi-doctor.sh toolbox-env.sh"
+NO_SET_E="desktop-info.sh os-info.sh nvidia-version-check.sh wifi-doctor.sh toolbox-env.sh get-turbo.sh"
 
 # Meant to be copied to another machine, so they do not assume /bin/bash.
 ENV_BASH="nvidia-version-check.sh wifi-doctor.sh"

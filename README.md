@@ -49,6 +49,8 @@ script here changes what runs, with no install step in between.
 | `os-info.sh` | `cat /etc/os-release`. |
 | `desktop-info.sh` | Display manager, OpenGL renderer, desktop session vars, icon theme, OS release. |
 | `toggle-sddm-keyboard.sh` | Toggles the SDDM on-screen keyboard at the login screen. |
+| `set-turbo.sh` | `set-turbo.sh 1` turns CPU turbo boost on, `0` turns it off, until the next reboot. Calls `sudo`. |
+| `get-turbo.sh` | Prints `1` if CPU turbo boost is on, `0` if off. |
 
 ## Who the updaters write for
 
